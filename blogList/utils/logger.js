@@ -5,4 +5,4 @@ const error =(...params) => {
     console.log(...params)
 }
 
-module.exports = { info }
+module.exports = { info, error }
