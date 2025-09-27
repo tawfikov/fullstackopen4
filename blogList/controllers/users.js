@@ -11,7 +11,7 @@ userRouter.post('/', async(req, res) => {
     if (username.length < 3 || password.length < 3) {
         return res.status(400).json({error: 'username and password must be at least 3 characters'})
     }
-    const duplicateUsername = await User.find({username: username})
+    const duplicateUsername = await User.findOne({username: username})
     if (duplicateUsername) {
         return res.status(400).json({error: 'This username is already taken'})
     }
@@ -30,7 +30,11 @@ userRouter.post('/', async(req, res) => {
 })
 
 userRouter.get('/', async(req, res) => {
-    const users = await User.find({})
+    const users = await User.find({}).populate('blogs', {
+        title: 1,
+        author: 1,
+        url: 1,
+    })
     res.json(users)
 })
 
