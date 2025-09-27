@@ -3,6 +3,9 @@ const mongoose = require('mongoose')
 const supertest = require('supertest')
 const assert = require('assert')
 const Blog = require('../models/blog')
+const User = require('../models/user')
+const bcrypt = require('bcrypt')
+
 const app = require('../app')
 const api = supertest(app)
 
@@ -27,11 +30,24 @@ const noLikesBlog = {
         url: 'a7aneek.com'
     }
 
+let auth
+
 beforeEach(async() => {
     await Blog.deleteMany({})
-    let blogObj = new Blog(initialBlogs[0])
+    await User.deleteMany({})
+
+    const hashed = await bcrypt.hash('123456', 10)
+    const user = new User({username: 'testuser', name: 'Test Name', hashedPassword: hashed})
+    await user.save()
+
+    const login = await api
+        .post('/api/login')
+        .send({username: 'testuser', password: '123456'})
+    auth = {Authorization: `Bearer ${login.body.token}`}
+    
+    let blogObj = new Blog({...initialBlogs[0], user: user._id})
     await blogObj.save()
-    blogObj = new Blog(initialBlogs[1])
+    blogObj = new Blog({...initialBlogs[1], user: user._id})
     await blogObj.save()
 })
 
@@ -58,6 +74,7 @@ test('adding a blog to the db is a success', async() => {
 
     await api
     .post('/api/blogs')
+    .set(auth)
     .send(newTestBlog)
     .expect(201)
     .expect('Content-Type', /application\/json/)
@@ -66,7 +83,7 @@ test('adding a blog to the db is a success', async() => {
 })
 
 test('a new blog that lacks number of likes will default to zero', async() => {
-    await api.post('/api/blogs')
+    await api.post('/api/blogs').set(auth)
     .send(noLikesBlog)
     .expect(201)
 
@@ -80,13 +97,13 @@ describe('required fields return 400', () => {
     const noURLBlog = {title: 'Zamboori', author: 'Mo Zambino'}
     const noTitleBlog = {author: 'Mo Zambino', url: 'zambolla.com'}
     test('a blog with no URL returns 400', async() => {
-        await api.post('/api/blogs')
+        await api.post('/api/blogs').set(auth)
         .send(noURLBlog)
         .expect(400)
     })
 
     test('a blog with no title returns 400', async() => {
-        await api.post('/api/blogs')
+        await api.post('/api/blogs').set(auth)
         .send(noTitleBlog)
         .expect(400)
     })
@@ -96,7 +113,7 @@ test('deleting a blog works', async() => {
     const init = await api.get('/api/blogs')
     const toDelete = init.body[1]
 
-    await api.delete(`/api/blogs/${toDelete.id}`)
+    await api.delete(`/api/blogs/${toDelete.id}`).set(auth)
     .expect(204)
 
     const resAfter = await api.get('/api/blogs')
@@ -108,12 +125,20 @@ test('patching a blog to edit likes works', async() => {
     const toDelete = init.body[1]
     const newData = {likes: toDelete.likes+1}
     const updated = await api
-    .patch(`/api/blogs/${toDelete.id}`)
+    .patch(`/api/blogs/${toDelete.id}`).set(auth)
     .send(newData)
     .expect(200)
 
     assert.strictEqual(updated.body.likes, toDelete.likes+1)
 })
+
+test('adding a block with no token fails with 401'), async () => {
+    const res = await api
+        .post('/api/blogs')
+        .send(newTestBlog)
+        .expect(401)
+    assert.match(res.body.err, /missing/)
+}
 
 after(async () => {
     await mongoose.connection.close()

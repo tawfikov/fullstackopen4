@@ -2,20 +2,16 @@ blogsRouter = require('express').Router()
 const Blog = require('../models/blog.js')
 const logger = require('../utils/logger.js')
 const User = require('../models/user.js')
-const jwt = require('jsonwebtoken')
+const middleware = require('../utils/middleware.js')
 
 blogsRouter.get('/', async(request, response) => {
   const blogs = await Blog.find({}).populate('user', {username: 1, name: 1})
   response.json(blogs)
 })
 
-blogsRouter.post('/', async(request, response) => {
-  const body = request.body
-  const decodedToken = jwt.verify(request.token, process.env.SECRET)
-  if (!decodedToken.id) {
-    return response.status(401).json({error: 'Invalid token'})
-  }
-  const user = await User.findById({_id: decodedToken.id})
+blogsRouter.post('/', middleware.getUser, async(request, response) => {
+  const user = request.user
+  
   if (!user) {
     return response.status(400).json({error: 'Invalid user ID'})
   }
@@ -36,9 +32,14 @@ blogsRouter.post('/', async(request, response) => {
   }
 })
 
-blogsRouter.delete('/:id', async(request, response) => {
+blogsRouter.delete('/:id', middleware.getUser, async(request, response) => {
   try{
-    const blog = await Blog.findByIdAndDelete(request.params.id)
+    const user = request.user
+    const blog = await Blog.findById(request.params.id)
+    if (user._id.toString() !== blog.user._id.toString()) {
+      return response.status(401).json({error: 'user is not authorized'})
+    }
+    await Blog.findByIdAndDelete(request.params.id)
     response.status(204).end()
   } catch(error) {
     logger.error(error.message)
@@ -46,10 +47,15 @@ blogsRouter.delete('/:id', async(request, response) => {
   }
 })
 
-blogsRouter.patch('/:id', async(request, response) =>{
+blogsRouter.patch('/:id', middleware.getUser, async(request, response) =>{
+  const user = request.user
   try {
-    const blog = await Blog.findByIdAndUpdate(request.params.id, request.body, {new: true, runValidators: true, context: 'query'})
-    response.json(blog)
+    const blog = await Blog.findById(request.params.id)
+    if (user._id.toString() !== blog.user._id.toString()) {
+      return response.status(401).json({error: 'user is not authorized'})
+    }
+    const updatedBlog = await Blog.findByIdAndUpdate(request.params.id, request.body, {new: true, runValidators: true, context: 'query'})
+    response.json(updatedBlog)
   } catch(error) {
     logger.error(error.message)
     response.status(500).json({error: error.message})
