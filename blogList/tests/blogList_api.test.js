@@ -132,13 +132,13 @@ test('patching a blog to edit likes works', async() => {
     assert.strictEqual(updated.body.likes, toDelete.likes+1)
 })
 
-test('adding a block with no token fails with 401'), async () => {
+test('adding a block with no token fails with 401', async () => {
     const res = await api
         .post('/api/blogs')
         .send(newTestBlog)
         .expect(401)
     assert.match(res.body.err, /missing/)
-}
+})
 
 after(async () => {
     await mongoose.connection.close()

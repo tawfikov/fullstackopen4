@@ -37,7 +37,7 @@ blogsRouter.delete('/:id', middleware.getUser, async(request, response) => {
     const user = request.user
     const blog = await Blog.findById(request.params.id)
     if (user._id.toString() !== blog.user._id.toString()) {
-      return response.status(401).json({error: 'user is not authorized'})
+      return response.status(403).json({error: 'user is not authorized'})
     }
     await Blog.findByIdAndDelete(request.params.id)
     response.status(204).end()
@@ -52,7 +52,7 @@ blogsRouter.patch('/:id', middleware.getUser, async(request, response) =>{
   try {
     const blog = await Blog.findById(request.params.id)
     if (user._id.toString() !== blog.user._id.toString()) {
-      return response.status(401).json({error: 'user is not authorized'})
+      return response.status(403).json({error: 'user is not authorized'})
     }
     const updatedBlog = await Blog.findByIdAndUpdate(request.params.id, request.body, {new: true, runValidators: true, context: 'query'})
     response.json(updatedBlog)
