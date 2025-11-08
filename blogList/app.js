@@ -22,7 +22,7 @@ if(process.env.NODE_ENV ==='test'){
     const testRouter = require('./controllers/test')
     app.use('/api/test', testRouter)
 }
-
+app.use(express.static('dist'))
 app.use(middleware.getToken)
 app.use(express.json())
 app.use('/api/blogs', blogsRouter)
