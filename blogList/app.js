@@ -17,6 +17,12 @@ mongoose.connect(config.MONGODB_URI)
     .catch((error)=>{
         logger.error('An error happend while connecting to MongoDB: ', error.message)
     })
+
+if(process.env.NODE_ENV ==='test'){
+    const testRouter = require('./controllers/test')
+    app.use('/api/test', testRouter)
+}
+
 app.use(middleware.getToken)
 app.use(express.json())
 app.use('/api/blogs', blogsRouter)

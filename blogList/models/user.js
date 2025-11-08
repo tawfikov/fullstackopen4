@@ -17,8 +17,12 @@ const userSchema = mongoose.Schema({
 
 userSchema.set('toJSON', {
     transform: (document, returnedObj) => {
-        returnedObj.id = returnedObj._id.toString(),
-        delete returnedObj._id,
+        if (!returnedObj) return
+
+        if (returnedObj._id) {
+            returnedObj.id = returnedObj._id.toString(),
+            delete returnedObj._id
+        }
         delete returnedObj.__v,
         delete returnedObj.hashedPassword
     }
